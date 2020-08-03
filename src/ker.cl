@@ -3,6 +3,24 @@
 // Naoki Shibata, Shinya Yamamoto: GPGPU-Assisted Subpixel Tracking Method for Fiducial Markers,
 // Journal of Information Processing, Vol.22(2014), No.1, pp.19-28, 2014-01. DOI:10.2197/ipsjjip.22.19
 
+/*
+getBedrock and child functions were written by coolmann24
+MIT License
+
+Copyright(c) 2019 coolmann24
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files(the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+*/
+
+
 __kernel void labelxPreprocess_int_int(global int* label, global int* pix, global int* flags, int maxpass, int bgc, int iw, int ih) {
 	const int x = get_global_id(0), y = get_global_id(1);
 	const int p0 = y * iw + x;
