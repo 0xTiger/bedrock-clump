@@ -1,9 +1,5 @@
-// Written by Naoki Shibata shibatch.sf.net@gmail.com 
-// http://ito-lab.naist.jp/~n-sibata/cclarticle/index.xhtml
-
+// This is an example implementation of a connected component labeling algorithm written by Naoki Shibata
 // This program is in public domain. You can use and modify this code for any purpose without any obligation.
-
-// This is an example implementation of a connected component labeling algorithm proposed in the following paper.
 // Naoki Shibata, Shinya Yamamoto: GPGPU-Assisted Subpixel Tracking Method for Fiducial Markers,
 // Journal of Information Processing, Vol.22(2014), No.1, pp.19-28, 2014-01. DOI:10.2197/ipsjjip.22.19
 
