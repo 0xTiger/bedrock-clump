@@ -12,7 +12,7 @@ Run the executable using `LargestBedrockGPU.exe <start> <end>`, where `<start>` 
 The size and coordinates of the largest clump in your scan area are recorded in recordFile.txt
 
 # goal
-If you would like to participate in the attempt to find the largest such bedrock clump then contact my discord at Tiger#8625 and I'll let you know the current unsearched area and the starts and ends you should use.
+If you would like to participate in the attempt to find the largest such bedrock clump then contact my discord at Tiger#8265 and I'll let you know the current unsearched area and the starts and ends you should use.
 
 Thanks :)
 
