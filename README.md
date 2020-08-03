@@ -1,2 +1,26 @@
 # bedrock-clump
-A GPU accelerated program to search the minecraft world for the largest connected clump of layer 5 bedrock
+A GPU accelerated program to search the minecraft world for the largest connected clump of layer 5 bedrock.
+This is implemented in OpenCL and uses code written by @coolmann24 in their [bedrock finder](https://github.com/coolmann24/BedrockFinderCpp).
+
+# usage
+Download the (windows x64 only) binaries from releases.
+
+In command prompt, navigate to the directory containing the executable using `cd Downloads\` etc.
+
+Run the executable using `LargestBedrockGPU.exe <start> <end>`, where `<start>` and `<end>` are integers between 0 and ~67,000,000.
+
+The size and coordinates of the largest clump in your scan area are recorded in recordFile.txt
+
+# goal
+If you would like to participate in the attempt to find the largest such bedrock clump then contact my discord at Tiger#8625 and I'll let you know the current unsearched area and the starts and ends you should use.
+
+Thanks :)
+
+
+- [x] 0-100K searched
+- [ ] 100K - 1M searched 
+- [ ] 1M - 10M searched
+- [ ] 10M - 67M searched
+
+**The current record is 51 at X: 203817, Z: -429317**
+![A clump of 51 connected bedrock](/LargeBedrock51.png)
