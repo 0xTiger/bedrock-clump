@@ -6,7 +6,11 @@
 #include "PrecomputedRandAdvance.h"
 #include <fstream>
 #include <math.h>
+#include <chrono>
+#include <iomanip>
+#include <tuple>
 
+typedef std::chrono::high_resolution_clock Clock;
 
 #define THREADSPERBLOCK_X 16
 #define THREADSPERBLOCK_Y 16
@@ -240,7 +244,22 @@ __global__ void reduction(int* inData, int* outData, int* outIdData) {
 	}*/
 }
 
+std::ostream& operator<<(std::ostream& os, const std::chrono::microseconds& v) {
+	// convert to microseconds
+	int us = v.count();
 
+	int h = us / (1000 * 1000 * 60 * 60);
+	us -= h * (1000 * 1000 * 60 * 60);
+
+	int m = us / (1000 * 1000 * 60);
+	us -= m * (1000 * 1000 * 60);
+
+	int s = us / (1000 * 1000);
+	us -= s * (1000 * 1000);
+
+	return os << std::setfill('0') << std::setw(2) << h << ':' << std::setw(2) << m
+		<< ':' << std::setw(2) << s;
+}
 
 
 std::vector<int> spiral(int n) {
@@ -290,13 +309,10 @@ int main(int argc, char* argv[])
 	const size_t start = atoi(argv[1]); // 0;
 	const size_t end = atoi(argv[2]); // start + 15;
 
-	std::vector<int> bedrock(len * len, 0);
 	std::vector<int> offset = { 0, 0};
 	
 	std::vector<int> final((len * len) / 256, 0);
 	std::vector<int> finalIds((len * len) / 256, 0);
-	std::vector<int> labels(len * len, 0);
-	std::vector<int> freq(len * len, 0);
 	
 	
 	cudaError_t err;
@@ -312,20 +328,20 @@ int main(int argc, char* argv[])
 	err = cudaMalloc(&a_d, sizeof(int64_t) * A_OW_112.size());
 	err = cudaMalloc(&b_d, sizeof(int64_t) * B_OW_112.size());
 	err = cudaMalloc(&off_d, sizeof(int) * offset.size());
-	err = cudaMalloc(&bedrock_d, sizeof(int) * bedrock.size());
-	err = cudaMalloc(&labels_d, sizeof(int) * labels.size());
+	err = cudaMalloc(&bedrock_d, sizeof(int) * len * len);
+	err = cudaMalloc(&labels_d, sizeof(int) * len * len);
 	err = cudaMalloc(&final_d, sizeof(int) * final.size());
 	err = cudaMalloc(&finalIds_d, sizeof(int) * finalIds.size());
-	err = cudaMalloc(&freq_d, sizeof(int) * freq.size());
+	err = cudaMalloc(&freq_d, sizeof(int) * len * len);
+
 
 	err = cudaMemcpy(a_d, A_OW_112.data(), sizeof(int64_t) * A_OW_112.size(), cudaMemcpyHostToDevice);
 	err = cudaMemcpy(b_d, B_OW_112.data(), sizeof(int64_t) * B_OW_112.size(), cudaMemcpyHostToDevice);
-	
-	err = cudaMemcpy(bedrock_d, bedrock.data(), sizeof(int) * bedrock.size(), cudaMemcpyHostToDevice);
-	
+
+	err = cudaMemset(bedrock_d, 0, sizeof(int) * len * len);
+
 	err = cudaMemcpy(final_d, final.data(), sizeof(int) * final.size(), cudaMemcpyHostToDevice);
 	err = cudaMemcpy(finalIds_d, finalIds.data(), sizeof(int) * finalIds.size(), cudaMemcpyHostToDevice);
-
 
 
 	std::tuple<size_t, int, int> best = { 0, 0, 0 };
@@ -347,9 +363,11 @@ int main(int argc, char* argv[])
 	dim3 DimBlock2(THREADSPERBLOCK_2);
 
 	for (int i = start; i < end; i++) {
-		std::cout << i << ' ';
+		auto t1 = Clock::now();
+
 		offset = { spiral(i)[0] * len , spiral(i)[1] * len };
 		//std::cout << offset[0] << ' ' << offset[1] << std::endl;
+		
 
 		err = cudaMemcpy(off_d, offset.data(), sizeof(int) * offset.size(), cudaMemcpyHostToDevice);
 		getBedrockTile << <DimGrid, DimBlock >> > (a_d, b_d, off_d, bedrock_d);
@@ -358,7 +376,7 @@ int main(int argc, char* argv[])
 
 		
 		//begin labeling clumps
-		err = cudaMemset(labels_d, 0, sizeof(int) * labels.size());
+		err = cudaMemset(labels_d, 0, sizeof(int) * len * len);
 
 		Init << <DimGrid, DimBlock >> > (bedrock_d, labels_d);
 		Analyze << <DimGrid, DimBlock >> > (labels_d);
@@ -369,7 +387,7 @@ int main(int argc, char* argv[])
 		//err = cudaMemcpy(bedrock.data(), bedrock_d, sizeof(int) * bedrock.size(), cudaMemcpyDeviceToHost);
 		//err = cudaMemcpy(labels.data(), labels_d, sizeof(int) * labels.size(), cudaMemcpyDeviceToHost);
 
-		err = cudaMemset(freq_d, 0, sizeof(int) * freq.size());
+		err = cudaMemset(freq_d, 0, sizeof(int) * len * len);
 
 		getFrequency << <DimGrid2, DimBlock2 >> > (labels_d, freq_d);
 
@@ -390,7 +408,15 @@ int main(int argc, char* argv[])
 		int recordX = finalIds[recordi] / len;
 		int recordZ = finalIds[recordi] % len;
 
-		std::cout << ' ' << record << " @ (" << recordX + offset[0] << ", " << recordZ + offset[1] << ')' << std::endl;
+		auto t2 = Clock::now();
+
+		std::cout << i << ' ';
+		std::cout << ' ' << record << " @ (" << recordX + offset[0] << ", " << recordZ + offset[1] << ')' << "                             " << std::endl;
+
+		std::chrono::microseconds ms = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+		int per_sec = (float)(1000000) / ms.count();
+		
+		std::cout << per_sec << "tiles/s"  << " ETA: " << ms * (end - i) << '\r';
 
 		std::tuple<size_t, int, int> result = { record, recordX + offset[0], recordZ + offset[1] };
 
@@ -399,7 +425,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	std::cout << "Best found: " << std::endl;
+	std::cout << "Best found: " << "                             " << std::endl;
 	std::cout << std::get<0>(best) << " @ (" << std::get<1>(best) << ", " << std::get<2>(best) << ')' << std::endl;
 
 	cudaFree(a_d);

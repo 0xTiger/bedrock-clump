@@ -21,7 +21,7 @@ furnished to do so, subject to the following conditions :
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 */
-__kernel void labelxPreprocess_int_int(global int* label, global int* pix, global int* flags, int maxpass, int bgc, int iw, int ih) {
+__kernel void labelxPreprocess_int_int(global int* label, global unsigned char* pix, global int* flags, int maxpass, int bgc, int iw, int ih) {
 	const int x = get_global_id(0), y = get_global_id(1);
 	const int p0 = y * iw + x;
 
@@ -37,7 +37,7 @@ __kernel void labelxPreprocess_int_int(global int* label, global int* pix, globa
 	label[p0] = p0;
 }
 
-__kernel void label4xMain_int_int(global int* label, global int* pix, global int* flags, int pass, int iw, int ih) {
+__kernel void label4xMain_int_int(global int* label, global unsigned char* pix, global int* flags, int pass, int iw, int ih) {
 	const int x = get_global_id(0), y = get_global_id(1);
 	if (x >= iw || y >= ih) return;
 	const int p0 = y * iw + x;
@@ -191,7 +191,7 @@ inline int precompChunkIndCalcNormal(int x, int y, int z, int nether)
 }
 
 
-inline int getBedrock(int x, int y, int z, global const long* a, global const long* b)
+inline unsigned char getBedrock(int x, int y, int z, global const long* a, global const long* b)
 {
 	if (y == 0) return 1;
 	if (y < 0 || y > 4) return 0;
@@ -199,7 +199,7 @@ inline int getBedrock(int x, int y, int z, global const long* a, global const lo
 	return (rand5(rawSeedFromChunk(x >> 4, z >> 4), a[precomp_ind], b[precomp_ind]) >= y)? 1 : 0;
 }
 
-kernel void getBedrockTile(global const long* a, global const long* b, global const int* offset, global int* outData)
+kernel void getBedrockTile(global const long* a, global const long* b, global const int* offset, global unsigned char* outData)
 {
 	int x = get_global_id(0);
 	int z = get_global_id(1);

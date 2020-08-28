@@ -4,8 +4,30 @@
 #include <vector>
 #include <math.h>
 #include "PrecomputedRandAdvance.h"
+#include <chrono>
+#include <tuple>
+#include <iomanip>
+
+typedef std::chrono::high_resolution_clock Clock;
 
 #define MAXPASS 10
+
+std::ostream& operator<<(std::ostream& os, const std::chrono::microseconds& v) {
+	// convert to microseconds
+	int us = v.count();
+
+	int h = us / (1000 * 1000 * 60 * 60);
+	us -= h * (1000 * 1000 * 60 * 60);
+
+	int m = us / (1000 * 1000 * 60);
+	us -= m * (1000 * 1000 * 60);
+
+	int s = us / (1000 * 1000);
+	us -= s * (1000 * 1000);
+
+	return os << std::setfill('0') << std::setw(2) << h << ':' << std::setw(2) << m
+		<< ':' << std::setw(2) << s;
+}
 
 std::vector<int> spiral(int n) {
 	n++;
@@ -76,7 +98,7 @@ int main(int argc, char* argv[])
 	const size_t end = atoi(argv[2]); // start + 15;
 
 
-	std::vector<int> bedrock(len * len, 0);
+	std::vector<unsigned char> bedrock(len * len, 0);
 	std::vector<int> offset = { 0, 0 };
 	std::tuple<size_t, int, int> best = { 0, 0, 0 };
 
@@ -89,7 +111,7 @@ int main(int argc, char* argv[])
 
 	cl::Buffer a_buf(context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(int64_t) * A_OW_112.size(), A_OW_112.data(), &err);
 	cl::Buffer b_buf(context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(int64_t) * B_OW_112.size(), B_OW_112.data(), &err);
-	cl::Buffer bedrock_buf(context, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, sizeof(int) * bedrock.size(), &err);
+	cl::Buffer bedrock_buf(context, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, sizeof(unsigned char) * bedrock.size(), &err);
 
 	kernel_bedrock.setArg(0, a_buf);
 	kernel_bedrock.setArg(1, b_buf);
@@ -109,6 +131,8 @@ int main(int argc, char* argv[])
 	cl::Buffer freq_buf(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, len * len * sizeof(cl_int), freq.data());
 	cl::Buffer final_buf(context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY, numWorkGroups * sizeof(int), final.data());
 	cl::Buffer finalIds_buf(context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY, numWorkGroups * sizeof(int), finalIds.data());
+
+
 	//1000 (*1000*1000) takes 7500ms before new shiny kernel
 	//1000 (*1000*1000) takes 2500ms with new shinyish kernel
 	//60 (*4096*4096) takes 2000ms with new shinyish kernel
@@ -118,7 +142,8 @@ int main(int argc, char* argv[])
 	// ^ at this point after scaling up to 150 iters, we can do about 10^9 blocks per second
 
 	for (int i = start; i < end; i++) {
-		std::cout << i << ' ';
+		auto t1 = Clock::now();
+
 		offset = { spiral(i)[0]*len , spiral(i)[1]*len};
 		//std::cout << offset[0] << ' ' << offset[1] << std::endl;
 
@@ -127,7 +152,7 @@ int main(int argc, char* argv[])
 		kernel_bedrock.setArg(2, off_buf);
 		
 		err = queue.enqueueNDRangeKernel(kernel_bedrock, cl::NullRange, cl::NDRange(len, len));
-		//err = queue.enqueueReadBuffer(bedrock_buf, CL_FALSE, 0, sizeof(int) * bedrock.size(), bedrock.data());
+		//err = queue.enqueueReadBuffer(bedrock_buf, CL_FALSE, 0, sizeof(unsigned char) * bedrock.size(), bedrock.data());
 
 		cl::finish();
 
@@ -185,7 +210,15 @@ int main(int argc, char* argv[])
 		int recordX = finalIds[recordi] / len;
 		int recordZ = finalIds[recordi] % len;
 
-		std::cout << ' ' << record <<  " @ (" << recordX + offset[0] << ", " << recordZ + offset[1] << ')' << std::endl;
+		auto t2 = Clock::now();
+
+		std::cout << i << ' ';
+		std::cout << ' ' << record << " @ (" << recordX + offset[0] << ", " << recordZ + offset[1] << ')' << "                             " << std::endl;
+
+		std::chrono::microseconds ms = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+		int per_sec = (float)(1000000) / ms.count();
+
+		std::cout << per_sec << "tiles/s" << " ETA: " << ms * (end - i) << '\r';
 
 		std::tuple<size_t, int, int> result = {record, recordX + offset[0], recordZ + offset[1] };
 
@@ -194,7 +227,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	std::cout << "Best found: " << std::endl;
+	std::cout << "Best found: " << "                             " << std::endl;
 	std::cout << std::get<0>(best) << " @ (" << std::get<1>(best) << ", " << std::get<2>(best) << ')' << std::endl;
 
 	
