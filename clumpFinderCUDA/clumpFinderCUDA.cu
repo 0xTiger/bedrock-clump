@@ -246,21 +246,21 @@ __global__ void reduction(int* inData, int* outData, int* outIdData) {
 
 std::ostream& operator<<(std::ostream& os, const std::chrono::microseconds& v) {
 	// convert to microseconds
-	int us = v.count();
+	int64_t us = v.count();
 
-	int h = us / (1000 * 1000 * 60 * 60);
-	us -= h * (1000 * 1000 * 60 * 60);
+	int h = us / ((int64_t)1000 * (int64_t)1000 * 60 * 60);
+	us -= h * ((int64_t)1000 * (int64_t)1000 * 60 * 60);
 
-	int m = us / (1000 * 1000 * 60);
-	us -= m * (1000 * 1000 * 60);
+	int m = us / ((int64_t)1000 * (int64_t)1000 * 60);
+	us -= m * ((int64_t)1000 * (int64_t)1000 * 60);
 
-	int s = us / (1000 * 1000);
-	us -= s * (1000 * 1000);
+	int s = us / ((int64_t)1000 * (int64_t)1000);
+	us -= s * ((int64_t)1000 * (int64_t)1000);
 
 	return os << std::setfill('0') << std::setw(2) << h << ':' << std::setw(2) << m
 		<< ':' << std::setw(2) << s;
 }
-
+   
 
 std::vector<int> spiral(int n) {
 	n++;
