@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 	std::vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 
-	_ASSERT(platforms.size() > 0);
+	// _ASSERT(platforms.size() > 0); Compile fails on Linux. Possibly an msvc only macro?
 
 	auto platform = platforms.front();
 
