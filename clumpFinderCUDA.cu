@@ -436,7 +436,12 @@ int main(int argc, char* argv[])
 		std::chrono::microseconds ms = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 		int per_sec = (float)(1000000) / ms.count();
 
-		std::cout << per_sec << "tiles/s"  << " ETA: " << ms * (end - i) << " Tile#: " << i << '\r';
+		if (hasflag_b){
+			std::cout << per_sec << "tiles/s"  << " Tile#: " << i << '\r';
+		} else {
+			std::cout << per_sec << "tiles/s"  << " ETA: " << ms * (end - i) << " Tile#: " << i << '\r';
+		}
+
 
 		std::tuple<size_t, int, int> result = { record, recordX + offset[0], recordZ + offset[1] };
 
