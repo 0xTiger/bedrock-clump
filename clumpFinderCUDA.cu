@@ -9,6 +9,9 @@
 #include <chrono>
 #include <iomanip>
 #include <tuple>
+#include "args_parser.h"
+#include <limits>
+#include <exception>
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -260,7 +263,14 @@ std::ostream& operator<<(std::ostream& os, const std::chrono::microseconds& v) {
 	return os << std::setfill('0') << std::setw(2) << h << ':' << std::setw(2) << m
 		<< ':' << std::setw(2) << s;
 }
-   
+
+void saveLog(std::string filename, size_t start, size_t end, std::tuple<size_t, int, int> best){
+	std::ofstream outfile;
+	outfile.open(filename, std::ios_base::app); // append instead of overwrite
+
+	outfile << "Searched: " << start << '-' << end << " Best found: " << std::get<0>(best) << " @ (" << std::get<1>(best) << ", " << std::get<2>(best) << ')' << std::endl;
+	outfile.close();
+}
 
 std::vector<int> spiral(int n) {
 	n++;
@@ -287,6 +297,7 @@ std::vector<int> spiral(int n) {
 
 int main(int argc, char* argv[])
 {
+	InputParser args(argc, argv);
 	int nDevices;
 
 	cudaGetDeviceCount(&nDevices);
@@ -300,21 +311,27 @@ int main(int argc, char* argv[])
 	}
 	std::cout << "---------------" << std::endl;
 
-	if (argc != 3) {
-		std::cout << "Please enter integer arguments of the form <start> <end> to specify" << std::endl;
-		std::cout << "the range to be searched. Both should be >0 and <67,000,000" << std::endl;
-		return 0;
+	const bool hasflag_q = args.cmdOptionExists("-q");
+	const bool hasflag_b = args.cmdOptionExists("-b");
+	const std::string flag_b = args.getCmdOption("-b");
+
+	if ((argc < 3) || (hasflag_b && std::string(argv[2]) != "-b" && std::string(argv[2]) != "-q")){
+		throw std::invalid_argument("usage: ./clumpFinderCUDA <start> <end | -b batchsize> [-q]");
 	}
+
 	const int len = 8192;
-	const size_t start = atoi(argv[1]); // 0;
-	const size_t end = atoi(argv[2]); // start + 15;
+	const size_t start = std::stoi(argv[1]);
+	const size_t end = hasflag_b ? UINT_MAX : std::stoi(argv[2]);
+
+	const size_t d = hasflag_b ? std::stoi(flag_b) : 0;
+	size_t part_start = hasflag_b ? start : 0;
+	size_t part_end = hasflag_b ? start + d - (start % d) : 0;
 
 	std::vector<int> offset = { 0, 0};
-	
 	std::vector<int> final((len * len) / 256, 0);
 	std::vector<int> finalIds((len * len) / 256, 0);
-	
-	
+
+
 	cudaError_t err;
 
 	int* off_d;
@@ -345,6 +362,7 @@ int main(int argc, char* argv[])
 
 
 	std::tuple<size_t, int, int> best = { 0, 0, 0 };
+	auto part_best = best;
 
 	//1000 (*1000*1000) takes 7500ms before new shiny kernel
 	//1000 (*1000*1000) takes 2500ms with new shinyish kernel
@@ -367,14 +385,14 @@ int main(int argc, char* argv[])
 
 		offset = { spiral(i)[0] * len , spiral(i)[1] * len };
 		//std::cout << offset[0] << ' ' << offset[1] << std::endl;
-		
+
 
 		err = cudaMemcpy(off_d, offset.data(), sizeof(int) * offset.size(), cudaMemcpyHostToDevice);
 		getBedrockTile << <DimGrid, DimBlock >> > (a_d, b_d, off_d, bedrock_d);
 
 		//err = cudaMemcpy(bedrock.data(), bedrock_d, sizeof(int) * bedrock.size(), cudaMemcpyDeviceToHost);
 
-		
+
 		//begin labeling clumps
 		err = cudaMemset(labels_d, 0, sizeof(int) * len * len);
 
@@ -395,7 +413,7 @@ int main(int argc, char* argv[])
 		//err = cudaMemcpy(freq.data(), freq_d, sizeof(int) * freq.size(), cudaMemcpyDeviceToHost);
 		err = cudaMemcpy(final.data(), final_d, sizeof(int) * final.size(), cudaMemcpyDeviceToHost);
 		err = cudaMemcpy(finalIds.data(), finalIds_d, sizeof(int) * finalIds.size(), cudaMemcpyDeviceToHost);
-		
+
 		cudaDeviceSynchronize();
 
 		int record = 0, recordi = 0;
@@ -410,18 +428,32 @@ int main(int argc, char* argv[])
 
 		auto t2 = Clock::now();
 
+		if (!hasflag_q){
 		std::cout << i << ' ';
 		std::cout << ' ' << record << " @ (" << recordX + offset[0] << ", " << recordZ + offset[1] << ')' << "                             " << std::endl;
+		}
 
 		std::chrono::microseconds ms = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
 		int per_sec = (float)(1000000) / ms.count();
-		
-		std::cout << per_sec << "tiles/s"  << " ETA: " << ms * (end - i) << '\r';
+
+		std::cout << per_sec << "tiles/s"  << " ETA: " << ms * (end - i) << " Tile#: " << i << '\r';
 
 		std::tuple<size_t, int, int> result = { record, recordX + offset[0], recordZ + offset[1] };
 
 		if (std::get<0>(result) > std::get<0>(best)) {
 			best = result;
+		}
+		if (hasflag_b){
+			if (std::get<0>(result) > std::get<0>(part_best)) {
+				part_best = result;
+			}
+
+			if (i % d == 0 && i != start){
+				saveLog("recordFile.txt", part_start, part_end, part_best);
+				part_start = i;
+				part_end = i + d;
+				part_best = {0, 0, 0};
+			}
 		}
 	}
 
@@ -437,9 +469,7 @@ int main(int argc, char* argv[])
 	cudaFree(finalIds_d);
 	cudaFree(labels_d);
 
-	std::ofstream outfile;
-	outfile.open("recordFile.txt", std::ios_base::app); // append instead of overwrite
-
-	outfile << "Searched: " << start << '-' << end << " Best found: " << std::get<0>(best) << " @ (" << std::get<1>(best) << ", " << std::get<2>(best) << ')' << std::endl;
-	outfile.close(); 
+	if (!hasflag_b){
+		saveLog("recordFile.txt", start, end, best);
+	}
 }

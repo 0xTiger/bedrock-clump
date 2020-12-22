@@ -23,8 +23,8 @@ Thanks :)
 
 
 - [x] 0-100K searched
-- [x] 100K - 1M searched 
-- [ ] 1M - 10M searched
+- [x] 100K - 1M searched
+- [x] 1M - 10M searched
 - [ ] 10M - 67M searched
 
 **The current record is 51 at X: 203817, Z: -429317**

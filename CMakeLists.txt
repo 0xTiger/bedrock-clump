@@ -11,7 +11,7 @@ project(cmakeTest2 LANGUAGES C CXX CUDA)
 # provide the cuda compiler: cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda-10.0/bin/nvcc ..
 
 set_source_files_properties(clumpFinderCUDA.cu PROPERTIES LANGUAGE "CUDA")
-add_executable(clumpFinderCUDA clumpFinderCUDA.cu PrecomputedRandAdvance.cpp PrecomputedRandAdvance.h)
+add_executable(clumpFinderCUDA clumpFinderCUDA.cu args_parser.h PrecomputedRandAdvance.cpp PrecomputedRandAdvance.h)
 set_target_properties(clumpFinderCUDA PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 #------------------------------------------------------------------------------------
