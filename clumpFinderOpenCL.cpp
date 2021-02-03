@@ -41,7 +41,7 @@ std::vector<int> spiral(int n) {
 	}
 	else { m = m - t; }
 
-	if (n >= m - t) { 
+	if (n >= m - t) {
 		return { -k, -k + (m - n) };
 	}
 	else { m = m - t; }
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 
 	if (argc != 3) {
 		std::cout << "Please enter integer arguments of the form <start> <end> to specify" << std::endl;
-		std::cout << "the range to be searched. Both should be >0 and <67,000,000" << std::endl;
+		std::cout << "the range to be searched. Both should be between 0 and 54,000,000" << std::endl;
 		return 0;
 	}
 	const int len = 8192;
@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
 	kernel_bedrock.setArg(0, a_buf);
 	kernel_bedrock.setArg(1, b_buf);
 	kernel_bedrock.setArg(3, bedrock_buf);
-	
+
 	int workGroupSize = kernel_reduce.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(device);
 	int numWorkGroups = (len * len) / workGroupSize;
 	//std::cout << numWorkGroups << std::endl;
@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
 		cl::Buffer off_buf(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * offset.size(), offset.data(), &err);
 
 		kernel_bedrock.setArg(2, off_buf);
-		
+
 		err = queue.enqueueNDRangeKernel(kernel_bedrock, cl::NullRange, cl::NDRange(len, len));
 		//err = queue.enqueueReadBuffer(bedrock_buf, CL_FALSE, 0, sizeof(unsigned char) * bedrock.size(), bedrock.data());
 
@@ -174,12 +174,12 @@ int main(int argc, char* argv[])
 		for (int i = 1; i <= MAXPASS; i++) {
 
 			kernel_propagate.setArg(3, i);
-			
+
 			err = queue.enqueueNDRangeKernel(kernel_propagate, cl::NullRange, cl::NDRange(len, len));
 		}
 		cl::finish();
 
-		
+
 		kernel_count.setArg(0, label_buf);
 		kernel_count.setArg(1, freq_buf);
 
@@ -230,7 +230,7 @@ int main(int argc, char* argv[])
 	std::cout << "Best found: " << "                             " << std::endl;
 	std::cout << std::get<0>(best) << " @ (" << std::get<1>(best) << ", " << std::get<2>(best) << ')' << std::endl;
 
-	
+
 	std::ofstream outfile;
 	outfile.open("recordFile.txt", std::ios_base::app); // append instead of overwrite
 
